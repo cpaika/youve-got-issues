@@ -1,5 +1,6 @@
 version: '3'
 services:
+
   tag-watcher-svc:
     build:
       context: .
@@ -7,5 +8,23 @@ services:
         # Choosing to hardcode the version for now since versioning doesn't give me any benefits right now
         # Could of ignored versioning all together, but now at least we have the option to deal with it later
         JAR_FILE: "target/tag-watcher-svc-0.0.1-SNAPSHOT.jar"
+
+  envoy-front-proxy:
+    build:
+      context: .
+      dockerfile: Dockerfile-frontenvoy
+    volumes:
+      - ./front-envoy.yaml:/etc/front-envoy.yaml
     ports:
-      - "8080:8080"
+      - "8000:80"
+      - "8001:8001"
+
+  envoy-tag-watcher-svc:
+    build:
+      context: .
+      dockerfile: Dockerfile-tagwatchersvcenvoy
+    volumes:
+      - ./tag-watcher-svc.yaml:/etc/tag-watcher-svc.yaml
+
+networks:
+  envoymesh: {}
