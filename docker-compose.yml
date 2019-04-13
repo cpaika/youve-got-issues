@@ -1,0 +1,6 @@
+version: '3'
+services:
+  tag-watcher-svc:
+    build: .
+    ports:
+      - "8080:8080"
