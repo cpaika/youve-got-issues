@@ -1,0 +1,93 @@
+---
+tracing:
+  http:
+    name: envoy.zipkin
+    config:
+      collector_cluster: jaeger
+      collector_endpoint: "/api/v1/spans"
+
+stats_sinks:
+  - name: envoy.statsd
+    config:
+      tcp_cluster_name: statsd_exporter
+#      prefix: front-envoy
+
+admin:
+  access_log_path: "/tmp/admin_access.log"
+  address:
+    socket_address:
+      address: "0.0.0.0"
+      port_value: 8001
+static_resources:
+  listeners:
+    -
+      name: "http_listener"
+      address:
+        socket_address:
+          address: "0.0.0.0"
+          port_value: 8000
+      filter_chains:
+        filters:
+          -
+            name: "envoy.http_connection_manager"
+            config:
+              tracing:
+                ##TODO switch this later
+                ##operation_name: egress
+                operation_name: ingress
+              use_remote_address: true
+              add_user_agent: true
+              access_log:
+                - name: envoy.file_access_log
+                  config:
+                    path: /dev/stdout
+                    format: "[ACCESS_LOG][%START_TIME%] \"%REQ(:METHOD)% %REQ(X-ENVOY-ORIGINAL-PATH?:PATH)% %PROTOCOL%\" %RESPONSE_CODE% %RESPONSE_FLAGS% %BYTES_RECEIVED% %BYTES_SENT% %DURATION% %RESP(X-ENVOY-UPSTREAM-SERVICE-TIME)% \"%REQ(X-FORWARDED-FOR)%\" \"%REQ(USER-AGENT)%\" \"%REQ(X-REQUEST-ID)%\" \"%REQ(:AUTHORITY)%\" \"%UPSTREAM_HOST%\" \"%DOWNSTREAM_REMOTE_ADDRESS_WITHOUT_PORT%\"\n"
+              stat_prefix: "ingress_8000"
+              codec_type: "AUTO"
+              generate_request_id: true
+              route_config:
+                name: "local_route"
+                virtual_hosts:
+                  -
+                    name: "http-route"
+                    domains:
+                      - "*"
+                    routes:
+                      -
+                        match:
+                          prefix: "/"
+                        route:
+                          cluster: "tag-watcher-svc"
+              http_filters:
+                -
+                  name: "envoy.router"
+  clusters:
+    - name: tag-watcher-svc
+      connect_timeout: 0.25s
+      ##type: STATIC
+      type: strict_dns
+      lb_policy: ROUND_ROBIN
+      hosts:
+        - socket_address:
+            address: tag-watcher-svc
+            ##address: 0.0.0.0
+            ##address: "tag-watcher-svc-envoy"
+            port_value: 8080
+
+    - name: jaeger
+      connect_timeout: 0.25s
+      type: strict_dns
+      lb_policy: round_robin
+      hosts:
+        - socket_address:
+            address: jaeger
+            port_value: 9411
+
+    - name: statsd_exporter
+      connect_timeout: 0.25s
+      type: strict_dns
+      lb_policy: ROUND_ROBIN
+      hosts:
+        - socket_address:
+            address: statsd_exporter
+            port_value: 9125
