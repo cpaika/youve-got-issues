@@ -62,15 +62,15 @@ static_resources:
                 -
                   name: "envoy.router"
   clusters:
-    - name: "tag-watcher-svc"
-      connect_timeout: "0.25s"
-      type: "STATIC"
-      ##type: "strict_dns"
-      lb_policy: "ROUND_ROBIN"
+    - name: tag-watcher-svc
+      connect_timeout: 0.25s
+      ##type: STATIC
+      type: strict_dns
+      lb_policy: ROUND_ROBIN
       hosts:
-        -
-          socket_address:
-            address: 127.0.0.1
+        - socket_address:
+            address: tag-watcher-svc
+            ##address: 0.0.0.0
             ##address: "tag-watcher-svc-envoy"
             port_value: 8080
 
